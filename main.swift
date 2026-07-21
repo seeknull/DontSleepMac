@@ -40,7 +40,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func startAwake() {
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/usr/bin/caffeinate")
-        p.arguments = ["-d"]  // -d = prevent DISPLAY sleep
+        // -d = prevent DISPLAY sleep.
+        // -w <pid> = auto-exit when THIS app exits, so a crash/force-quit can
+        // never leave an orphaned caffeinate holding the display awake forever.
+        p.arguments = ["-d", "-w", String(ProcessInfo.processInfo.processIdentifier)]
         p.terminationHandler = { [weak self] _ in
             DispatchQueue.main.async {
                 self?.task = nil
