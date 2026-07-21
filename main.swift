@@ -47,8 +47,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.updateIcon()
             }
         }
-        try? p.run()
-        task = p
+        do {
+            try p.run()
+            task = p
+        } catch {
+            // Couldn't launch caffeinate — stay honest, don't show red.
+            task = nil
+            NSSound.beep()
+        }
     }
 
     private func stopAwake() {

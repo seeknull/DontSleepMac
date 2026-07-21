@@ -39,7 +39,7 @@ One red eye in your menu bar. Click it:
 - **Left-click** — toggle awake / normal
 - **Right-click** — Quit
 
-Under the hood it uses Apple's built-in [`caffeinate -d`](x-man-page://caffeinate). **No admin password. No background daemon.** When the eye is grey, nothing runs — your original sleep settings apply, untouched.
+Under the hood it uses Apple's built-in `caffeinate -d` (`man caffeinate`). **No admin password. No background daemon.** When the eye is grey, nothing runs — your original sleep settings apply, untouched.
 
 > It **overrides** display sleep while active; it does **not** rewrite your System Settings dropdowns. The menu-bar eye is your source of truth: red = awake, grey = normal.
 
