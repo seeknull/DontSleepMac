@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b2432"/>
+      <stop offset="1" stop-color="#0e1420"/>
+    </linearGradient>
+    <radialGradient id="iris" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ff6a5a"/>
+      <stop offset="0.7" stop-color="#ef4b3c"/>
+      <stop offset="1" stop-color="#d0331f"/>
+    </radialGradient>
+  </defs>
+  <rect x="0" y="0" width="1024" height="1024" rx="224" fill="url(#bg)"/>
+  <!-- eye outline -->
+  <path d="M160 512 Q512 232 864 512 Q512 792 160 512 Z"
+        fill="none" stroke="#ef4b3c" stroke-width="54" stroke-linejoin="round"/>
+  <!-- iris -->
+  <circle cx="512" cy="512" r="150" fill="url(#iris)"/>
+  <!-- pupil -->
+  <circle cx="512" cy="512" r="66" fill="#2a0c07"/>
+  <!-- glint -->
+  <circle cx="470" cy="470" r="26" fill="#ffd9d2" opacity="0.9"/>
+</svg>

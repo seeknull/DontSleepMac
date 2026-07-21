@@ -1,0 +1,12 @@
+# Build output
+DontSleepMac.app/
+build/render
+build/render2
+build/*.iconset/
+
+# macOS
+.DS_Store
+
+# Keep committed:
+#   main.swift, build.sh, LICENSE, README.md
+#   assets/*.png, assets/*.svg, assets/AppIcon.icns
