@@ -1,76 +1,48 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000">
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="620" viewBox="0 0 1600 620">
   <defs>
     <linearGradient id="page" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#0d1117"/><stop offset="1" stop-color="#161b22"/>
+      <stop offset="0" stop-color="#141b26"/><stop offset="1" stop-color="#0d131c"/>
     </linearGradient>
-    <linearGradient id="wall" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#1a2740"/><stop offset="0.5" stop-color="#0f1a30"/><stop offset="1" stop-color="#0a1120"/>
-    </linearGradient>
-    <linearGradient id="bar" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#11213d"/><stop offset="1" stop-color="#0d1a30"/>
-    </linearGradient>
-    <linearGradient id="alu" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#c9ccd1"/><stop offset="1" stop-color="#9aa0a8"/>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1c2634"/><stop offset="1" stop-color="#151d29"/>
     </linearGradient>
     <radialGradient id="iris" cx="0.42" cy="0.4" r="0.6">
       <stop offset="0" stop-color="#ff6a5a"/><stop offset="0.7" stop-color="#ef4b3c"/><stop offset="1" stop-color="#d0331f"/>
     </radialGradient>
-    <filter id="sh" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="24" stdDeviation="34" flood-color="#000" flood-opacity="0.45"/>
+    <filter id="sh" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="16" stdDeviation="26" flood-color="#000" flood-opacity="0.4"/>
     </filter>
   </defs>
 
-  <rect width="1600" height="1000" fill="url(#page)"/>
+  <rect width="1600" height="620" fill="url(#page)"/>
 
-  <!-- laptop group -->
+  <text x="800" y="140" font-family="-apple-system,Helvetica,Arial" font-size="52" font-weight="800" fill="#eef2f7" text-anchor="middle">Two ways to stay awake</text>
+
+  <!-- LEFT CARD: Keep display on (open red eye) -->
   <g filter="url(#sh)">
-    <!-- screen bezel -->
-    <rect x="300" y="150" width="1000" height="640" rx="26" fill="#0b0d12" stroke="#2b2f38" stroke-width="3"/>
-    <!-- camera -->
-    <circle cx="800" cy="172" r="4" fill="#22262e"/>
-    <!-- screen content -->
-    <rect x="318" y="188" width="964" height="584" rx="10" fill="url(#wall)"/>
-
-    <!-- menu bar -->
-    <rect x="318" y="188" width="964" height="40" rx="10" fill="url(#bar)"/>
-    <rect x="318" y="214" width="964" height="14" fill="url(#bar)"/>
-    <!-- left: apple + app menus -->
-    <circle cx="345" cy="208" r="7" fill="#e6e8ea"/>
-    <rect x="368" y="203" width="46" height="10" rx="3" fill="#e6e8ea" opacity="0.9"/>
-    <rect x="430" y="203" width="34" height="10" rx="3" fill="#aeb3ba" opacity="0.7"/>
-    <rect x="480" y="203" width="34" height="10" rx="3" fill="#aeb3ba" opacity="0.7"/>
-
-    <!-- right cluster status icons (simplified) -->
-    <g fill="#cfd3d8" opacity="0.85">
-      <rect x="1000" y="201" width="16" height="14" rx="2"/>
-      <circle cx="1045" cy="208" r="7"/>
-      <rect x="1075" y="201" width="18" height="14" rx="3"/>
-      <rect x="1150" y="202" width="30" height="12" rx="3"/>
-    </g>
-    <!-- clock -->
-    <rect x="1200" y="202" width="60" height="12" rx="3" fill="#e6e8ea"/>
-
-    <!-- OUR red eye icon, highlighted -->
-    <g transform="translate(958,208)">
-      <circle cx="0" cy="0" r="20" fill="#ef4b3c" opacity="0.16"/>
-      <path d="M-15 0 Q0 -12 15 0 Q0 12 -15 0 Z" fill="none" stroke="#ef4b3c" stroke-width="3.4" stroke-linejoin="round"/>
-      <circle cx="0" cy="0" r="6.4" fill="url(#iris)"/>
-      <circle cx="0" cy="0" r="2.8" fill="#2a0c07"/>
-    </g>
-    <!-- callout -->
-    <g>
-      <path d="M958 236 L958 300 L1120 300" fill="none" stroke="#ef4b3c" stroke-width="2.5" stroke-dasharray="5 5" opacity="0.8"/>
-      <rect x="1120" y="278" width="150" height="44" rx="10" fill="#ef4b3c"/>
-      <text x="1195" y="305" font-family="-apple-system,Helvetica,Arial" font-size="19" font-weight="700" fill="#fff" text-anchor="middle">Awake</text>
-    </g>
-
-    <!-- centered subtitle on wallpaper -->
-    <text x="800" y="560" font-family="-apple-system,Helvetica,Arial" font-size="46" font-weight="800" fill="#eef2f7" text-anchor="middle">Your Mac stays awake</text>
-    <text x="800" y="606" font-family="-apple-system,Helvetica,Arial" font-size="24" font-weight="500" fill="#8b97a8" text-anchor="middle">One click in the menu bar. Red = on.</text>
-
-    <!-- hinge / base -->
-    <rect x="300" y="786" width="1000" height="10" rx="4" fill="#2b2f38"/>
-    <path d="M232 796 L1368 796 L1400 858 Q1400 872 1384 872 L216 872 Q200 872 200 858 Z" fill="url(#alu)"/>
-    <rect x="690" y="796" width="220" height="14" rx="7" fill="#7f858d"/>
+    <rect x="230" y="250" width="520" height="260" rx="28" fill="url(#card)" stroke="#2a3646" stroke-width="2"/>
   </g>
+  <g transform="translate(360,360)">
+    <!-- open eye -->
+    <path d="M-58 0 Q0 -40 58 0 Q0 40 -58 0 Z" fill="none" stroke="#ef4b3c" stroke-width="11" stroke-linejoin="round"/>
+    <circle cx="0" cy="0" r="22" fill="url(#iris)"/>
+  </g>
+  <text x="500" y="345" font-family="-apple-system,Helvetica,Arial" font-size="30" font-weight="700" fill="#f2f5f9">Keep display on</text>
+  <text x="500" y="385" font-family="-apple-system,Helvetica,Arial" font-size="22" font-weight="500" fill="#93a0b2">Screen stays awake.</text>
+  <text x="500" y="415" font-family="-apple-system,Helvetica,Arial" font-size="22" font-weight="500" fill="#93a0b2">Everything keeps running.</text>
+
+  <!-- RIGHT CARD: Display off, stay awake (half-shut red eye) -->
+  <g filter="url(#sh)">
+    <rect x="850" y="250" width="520" height="260" rx="28" fill="url(#card)" stroke="#2a3646" stroke-width="2"/>
+  </g>
+  <g transform="translate(980,360)">
+    <!-- half-shut eye: flat upper lid + bottom arc + half iris -->
+    <line x1="-58" y1="0" x2="58" y2="0" stroke="#ef4b3c" stroke-width="11" stroke-linecap="round"/>
+    <path d="M-58 0 Q0 34 58 0" fill="none" stroke="#ef4b3c" stroke-width="11" stroke-linejoin="round"/>
+    <clipPath id="lidclip"><rect x="-58" y="0" width="116" height="36"/></clipPath>
+    <circle cx="0" cy="6" r="18" fill="url(#iris)" clip-path="url(#lidclip)"/>
+  </g>
+  <text x="1120" y="345" font-family="-apple-system,Helvetica,Arial" font-size="30" font-weight="700" fill="#f2f5f9">Display off, stay awake</text>
+  <text x="1120" y="385" font-family="-apple-system,Helvetica,Arial" font-size="22" font-weight="500" fill="#93a0b2">Screen turns off to save power.</text>
+  <text x="1120" y="415" font-family="-apple-system,Helvetica,Arial" font-size="22" font-weight="500" fill="#93a0b2">Your work keeps running.</text>
 </svg>

@@ -18,28 +18,48 @@ import Cocoa
 
 enum AwakeState { case normal, displayOn, screenOffAwake }
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem!
     private var task: Process?          // our own caffeinate, if we started one
     private var ourMode: AwakeState = .normal
+    private var lastMode: AwakeState = .displayOn   // what a plain left-click toggles
     private var timer: Timer?
+    private var menu: NSMenu!
 
     private let displayItem = NSMenuItem(title: "Keep display on", action: #selector(toggleDisplayOn), keyEquivalent: "")
     private let screenOffItem = NSMenuItem(title: "Display off, stay awake", action: #selector(toggleScreenOff), keyEquivalent: "")
+    private let infoItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+    private let showProcessesItem = NSMenuItem(title: "Show what's keeping Mac awake…", action: #selector(showAwakeProcesses), keyEquivalent: "")
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Safety net: reap any caffeinate we may have orphaned in a past crash
+        // before -w bindings existed. (Current runs can't orphan — see startOurCaffeinate.)
+        reapOrphanedCaffeinate()
+
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
-        let menu = NSMenu()
+        menu = NSMenu()
+        menu.delegate = self          // refresh the info line each time the menu opens
         displayItem.target = self
         screenOffItem.target = self
         menu.addItem(displayItem)
         menu.addItem(screenOffItem)
         menu.addItem(.separator())
+        infoItem.isEnabled = false    // header/status line, not clickable
+        menu.addItem(infoItem)
+        showProcessesItem.target = self
+        menu.addItem(showProcessesItem)
+        menu.addItem(.separator())
         let quit = NSMenuItem(title: "Quit DontSleepMac", action: #selector(quit), keyEquivalent: "q")
         quit.target = self
         menu.addItem(quit)
-        statusItem.menu = menu
+
+        // Left-click toggles the last-used mode; right-click opens the menu.
+        if let button = statusItem.button {
+            button.action = #selector(statusClick)
+            button.target = self
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+        }
 
         refresh()
         // Poll real system state every 5s so external tools are reflected.
@@ -48,26 +68,50 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    // MARK: - Status-item click routing
+
+    /// Left-click: toggle the last-used mode on/off. Right-click: open the menu.
+    @objc private func statusClick() {
+        if NSApp.currentEvent?.type == .rightMouseUp {
+            statusItem.menu = menu
+            statusItem.button?.performClick(nil)
+            statusItem.menu = nil          // detach so left-click keeps toggling
+        } else {
+            lastMode == .screenOffAwake ? toggleScreenOff() : toggleDisplayOn()
+        }
+    }
+
     // MARK: - Menu actions (mutually exclusive; clicking the active one turns it off)
 
     @objc private func toggleDisplayOn() {
-        let wasOn = (ourMode == .displayOn)
-        wasOn ? stopOurCaffeinate() : startOurCaffeinate(flag: "-d", mode: .displayOn)
-        refresh()
-        if wasOn { warnIfStillHeld() }
+        if ourMode == .displayOn {
+            let killed = stopOurCaffeinate()
+            refresh()
+            warnIfStillHeld(excludingPid: killed)
+        } else {
+            lastMode = .displayOn
+            startOurCaffeinate(flag: "-d", mode: .displayOn)
+            refresh()
+        }
     }
 
     @objc private func toggleScreenOff() {
-        let wasOn = (ourMode == .screenOffAwake)
-        wasOn ? stopOurCaffeinate() : startOurCaffeinate(flag: "-i", mode: .screenOffAwake)
-        refresh()
-        if wasOn { warnIfStillHeld() }
+        if ourMode == .screenOffAwake {
+            let killed = stopOurCaffeinate()
+            refresh()
+            warnIfStillHeld(excludingPid: killed)
+        } else {
+            lastMode = .screenOffAwake
+            startOurCaffeinate(flag: "-i", mode: .screenOffAwake)
+            refresh()
+        }
     }
 
     /// After we release our own hold, if the Mac is STILL being kept awake by
     /// something else, tell the user who — so a "nothing happened" icon makes sense.
-    private func warnIfStillHeld() {
-        let holders = externalHolders()
+    /// `excludingPid` is our just-killed caffeinate, so we never blame ourselves.
+    private func warnIfStillHeld(excludingPid: Int32?) {
+        let holders = externalHolders(excludingPid: excludingPid)
         guard systemState() != .normal, !holders.isEmpty else { return }
         let list = holders.map { "• \($0)" }.joined(separator: "\n")
         let alert = NSAlert()
@@ -100,10 +144,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func stopOurCaffeinate() {
-        task?.terminate()
+    /// Terminate our caffeinate and WAIT for it to actually exit (so its sleep
+    /// assertion is gone before anyone reads pmset). Returns the pid we killed.
+    @discardableResult
+    private func stopOurCaffeinate() -> Int32? {
+        guard let p = task else { ourMode = .normal; return nil }
+        let pid = p.processIdentifier
         task = nil
         ourMode = .normal
+        p.terminationHandler = nil   // we handle teardown synchronously here
+        p.terminate()
+        p.waitUntilExit()            // block until the assertion is truly released
+        return pid
     }
 
     // MARK: - Reality: read the actual system sleep assertions
@@ -134,9 +186,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Human-readable names of external processes currently preventing sleep
     /// (excludes our own caffeinate and the incidental powerd/coreaudiod holders).
-    private func externalHolders() -> [String] {
+    /// `excludingPid` is our just-terminated caffeinate — excluded so we never
+    /// list ourselves right after toggling off.
+    private func externalHolders(excludingPid: Int32? = nil) -> [String] {
         guard let out = runPmsetAssertions() else { return [] }
-        let ourPid = task?.processIdentifier
+        let skipPids: Set<Int> = [task?.processIdentifier, excludingPid]
+            .compactMap { $0 }.map { Int($0) }.reduce(into: Set<Int>()) { $0.insert($1) }
         var names: [String] = []
         for line in out.split(separator: "\n") {
             guard line.contains("pid "),
@@ -148,7 +203,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard let r = line.range(of: #"pid (\d+)\(([^)]+)\)"#, options: .regularExpression) else { continue }
             let frag = String(line[r])
             let pidStr = frag.drop(while: { !$0.isNumber }).prefix(while: { $0.isNumber })
-            if let ourPid, Int(pidStr) == Int(ourPid) { continue }  // skip our own
+            if let pid = Int(pidStr), skipPids.contains(pid) { continue }  // skip our own
             if let np = frag.firstIndex(of: "("), let ep = frag.firstIndex(of: ")") {
                 let name = String(frag[frag.index(after: np)..<ep])
                 if !names.contains(name) { names.append(name) }
@@ -202,18 +257,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         button.toolTip = tip
     }
 
-    /// Custom menu-bar glyphs (drawn in code, crisp at any scale):
-    ///   .displayOn      → open red eye
-    ///   .screenOffAwake → half-shut red eye (still awake, screen dark)
-    ///   .normal         → grey closed eye
+    /// Menu-bar glyphs:
+    ///   .normal         → grey slashed eye (SF Symbol eye.slash)
+    ///   .displayOn      → open red eye (custom)
+    ///   .screenOffAwake → half-shut red eye (custom — still awake, screen dark)
     private static func eyeIcon(for state: AwakeState) -> NSImage {
+        // Off / normal uses the crisp built-in slashed eye.
+        if state == .normal {
+            let cfg = NSImage.SymbolConfiguration(pointSize: 15, weight: .regular)
+                .applying(.init(paletteColors: [.secondaryLabelColor]))
+            let img = NSImage(systemSymbolName: "eye.slash", accessibilityDescription: "DontSleepMac")?
+                .withSymbolConfiguration(cfg) ?? NSImage()
+            img.isTemplate = false
+            return img
+        }
+
         let side: CGFloat = 18
         let img = NSImage(size: NSSize(width: side, height: side))
         img.lockFocus()
         NSGraphicsContext.current?.imageInterpolation = .high
 
         let red = NSColor.systemRed
-        let grey = NSColor.secondaryLabelColor
         let c = NSPoint(x: side/2, y: side/2)
         let hw: CGFloat = 7.5   // half-width of eye
         let lw: CGFloat = 1.6
@@ -223,6 +287,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         switch state {
+        case .normal:
+            break  // handled above
         case .displayOn:
             // open eye: two symmetric arcs + iris
             let e = NSBezierPath()
@@ -247,19 +313,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let iris = NSBezierPath(ovalIn: NSRect(x: c.x-2.4, y: c.y-3, width: 4.8, height: 4.8))
             red.setFill(); iris.fill()
             NSGraphicsContext.restoreGraphicsState()
-
-        case .normal:
-            // closed eye: gentle downward lid + small lashes
-            let lid = NSBezierPath()
-            lid.move(to: NSPoint(x: c.x-hw, y: c.y+0.5))
-            lid.curve(to: NSPoint(x: c.x+hw, y: c.y+0.5), controlPoint1: NSPoint(x: c.x-2, y: c.y-4), controlPoint2: NSPoint(x: c.x+2, y: c.y-4))
-            stroke(lid, grey)
-            for dx in [-5.0, -1.5, 2.0, 5.5] {
-                let l = NSBezierPath()
-                l.move(to: NSPoint(x: c.x+CGFloat(dx), y: c.y-2))
-                l.line(to: NSPoint(x: c.x+CGFloat(dx)-0.8, y: c.y-4.5))
-                l.lineWidth = 1.2; grey.setStroke(); l.lineCapStyle = .round; l.stroke()
-            }
         }
 
         img.unlockFocus()
@@ -267,8 +320,93 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return img
     }
 
+    // MARK: - Caffeinate process inventory & cleanup
+
+    /// All running caffeinate processes as (pid, full command) pairs.
+    private func caffeinateProcesses() -> [(pid: Int, command: String)] {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/bin/ps")
+        p.arguments = ["-axo", "pid=,command="]
+        let pipe = Pipe(); p.standardOutput = pipe
+        do { try p.run() } catch { return [] }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        p.waitUntilExit()
+        guard let out = String(data: data, encoding: .utf8) else { return [] }
+        var result: [(Int, String)] = []
+        for line in out.split(separator: "\n") {
+            let t = line.trimmingCharacters(in: .whitespaces)
+            guard t.contains("/usr/bin/caffeinate") || t.hasSuffix("caffeinate")
+                    || t.contains(" caffeinate") else { continue }
+            let parts = t.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: true)
+            guard let pid = Int(parts.first ?? "") else { continue }
+            let cmd = parts.count > 1 ? String(parts[1]) : "caffeinate"
+            // Skip the `ps`/grep line itself if any.
+            if cmd.contains("-axo") { continue }
+            result.append((pid, cmd))
+        }
+        return result
+    }
+
+    /// Kill any caffeinate that is bound to a NO-LONGER-EXISTING pid via `-w`,
+    /// i.e. an orphan from a prior crash. Never touches a user's own caffeinate
+    /// or one bound to a live process.
+    private func reapOrphanedCaffeinate() {
+        for proc in caffeinateProcesses() {
+            // Look for "-w <pid>" and check whether that pid is still alive.
+            let tokens = proc.command.split(separator: " ").map(String.init)
+            guard let wIdx = tokens.firstIndex(of: "-w"), wIdx + 1 < tokens.count,
+                  let watched = Int32(tokens[wIdx + 1]) else { continue }
+            // kill(pid, 0) == -1 with ESRCH means the watched process is gone → orphan.
+            if kill(watched, 0) != 0 {
+                kill(Int32(proc.pid), SIGTERM)
+            }
+        }
+    }
+
+    /// Info dialog: show every process currently keeping the Mac awake,
+    /// plus any caffeinate processes running (so strays are visible).
+    @objc private func showAwakeProcesses() {
+        let holders = externalHolders()
+        let caffs = caffeinateProcesses()
+        let ourPid = Int(task?.processIdentifier ?? -1)
+
+        var body = ""
+        if holders.isEmpty {
+            body += "Nothing is preventing sleep.\n"
+        } else {
+            body += "Preventing sleep:\n" + holders.map { "  • \($0)" }.joined(separator: "\n") + "\n"
+        }
+        body += "\ncaffeinate processes:\n"
+        if caffs.isEmpty {
+            body += "  (none)"
+        } else {
+            body += caffs.map { c in
+                let mine = (c.pid == ourPid) ? "  ← this app" : ""
+                return "  • pid \(c.pid): \(c.command)\(mine)"
+            }.joined(separator: "\n")
+        }
+
+        let alert = NSAlert()
+        alert.messageText = "What's keeping your Mac awake"
+        alert.informativeText = body
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+    }
+
+    // Refresh the info line every time the menu is opened.
+    func menuWillOpen(_ menu: NSMenu) {
+        let holders = externalHolders()
+        let caffCount = caffeinateProcesses().count
+        if holders.isEmpty {
+            infoItem.title = caffCount == 0 ? "Sleeping normally" : "Awake"
+        } else {
+            infoItem.title = "Kept awake by: " + holders.joined(separator: ", ")
+        }
+    }
+
     @objc private func quit() {
-        stopOurCaffeinate()
+        stopOurCaffeinate()          // waits for our caffeinate to fully exit
         NSApp.terminate(nil)
     }
 }
