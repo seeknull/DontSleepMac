@@ -3,8 +3,8 @@ import Cocoa
 // DontSleepMac — menu-bar control for macOS sleep.
 //
 // Two modes, set from the right-click menu:
-//   • Keep display on        → caffeinate -d  (screen stays awake)
-//   • Display off, stay awake → caffeinate -i  (screen may sleep, machine keeps working)
+//   • Stay Awake — Display On  → caffeinate -d  (screen stays awake)
+//   • Stay Awake — Display Off → caffeinate -i  (screen may sleep, machine keeps working)
 //
 // The icon reflects the REAL system state, polled every 5s. If any other app
 // (an external `caffeinate`, Amphetamine, etc.) is keeping the Mac awake, the
@@ -26,8 +26,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var timer: Timer?
     private var menu: NSMenu!
 
-    private let displayItem = NSMenuItem(title: "Keep display on", action: #selector(toggleDisplayOn), keyEquivalent: "")
-    private let screenOffItem = NSMenuItem(title: "Display off, stay awake", action: #selector(toggleScreenOff), keyEquivalent: "")
+    private let displayItem = NSMenuItem(title: "Stay Awake — Display On", action: #selector(toggleDisplayOn), keyEquivalent: "")
+    private let screenOffItem = NSMenuItem(title: "Stay Awake — Display Off", action: #selector(toggleScreenOff), keyEquivalent: "")
     private let infoItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let showProcessesItem = NSMenuItem(title: "Show what's keeping Mac awake…", action: #selector(showAwakeProcesses), keyEquivalent: "")
 
@@ -250,8 +250,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let tip: String
         switch state {
         case .normal:          tip = "Normal — Mac sleeps per your settings"
-        case .displayOn:       tip = "Display staying on"
-        case .screenOffAwake:  tip = "Display off — machine staying awake"
+        case .displayOn:       tip = "Stay Awake — Display On"
+        case .screenOffAwake:  tip = "Stay Awake — Display Off"
         }
         button.image = Self.eyeIcon(for: state)   // custom-drawn glyph
         button.toolTip = tip

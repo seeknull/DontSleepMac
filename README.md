@@ -28,8 +28,8 @@ Your Mac sleeps mid-task, and things break:
 | Icon | Mode | What it does |
 |:----:|------|--------------|
 | <img src="assets/ic-off.png" width="28"/> | **Off** | Normal — your Mac sleeps as usual |
-| <img src="assets/ic-on.png" width="28"/> | **Keep display on** | Screen stays awake |
-| <img src="assets/ic-awake.png" width="28"/> | **Display off, stay awake** | Screen turns off, but your work keeps running |
+| <img src="assets/ic-on.png" width="28"/> | **Stay Awake — Display On** | Screen stays awake |
+| <img src="assets/ic-awake.png" width="28"/> | **Stay Awake — Display Off** | Screen turns off, but your work keeps running |
 
 ## Install
 
