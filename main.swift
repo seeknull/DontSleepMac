@@ -42,6 +42,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.delegate = self          // refresh the info line each time the menu opens
         displayItem.target = self
         screenOffItem.target = self
+        displayItem.image = Self.eyeIcon(for: .displayOn)       // open red eye
+        screenOffItem.image = Self.eyeIcon(for: .screenOffAwake) // half-shut red eye
         menu.addItem(displayItem)
         menu.addItem(screenOffItem)
         menu.addItem(.separator())
