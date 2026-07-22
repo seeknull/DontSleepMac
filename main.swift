@@ -192,25 +192,79 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func updateIcon(for state: AwakeState) {
         guard let button = statusItem.button else { return }
-        let symbol: String
-        let color: NSColor
         let tip: String
         switch state {
-        case .normal:
-            symbol = "eye.slash"; color = .secondaryLabelColor
-            tip = "Normal — Mac sleeps per your settings"
-        case .displayOn:
-            symbol = "eye.fill"; color = .systemRed
-            tip = "Display staying on"
-        case .screenOffAwake:
-            symbol = "moon.zzz.fill"; color = .systemOrange
-            tip = "Display off — machine staying awake"
+        case .normal:          tip = "Normal — Mac sleeps per your settings"
+        case .displayOn:       tip = "Display staying on"
+        case .screenOffAwake:  tip = "Display off — machine staying awake"
         }
-        let img = NSImage(systemSymbolName: symbol, accessibilityDescription: "DontSleepMac")
-        let config = NSImage.SymbolConfiguration(paletteColors: [color])
-        button.image = img?.withSymbolConfiguration(config)
-        button.image?.isTemplate = false
+        button.image = Self.eyeIcon(for: state)   // custom-drawn glyph
         button.toolTip = tip
+    }
+
+    /// Custom menu-bar glyphs (drawn in code, crisp at any scale):
+    ///   .displayOn      → open red eye
+    ///   .screenOffAwake → half-shut red eye (still awake, screen dark)
+    ///   .normal         → grey closed eye
+    private static func eyeIcon(for state: AwakeState) -> NSImage {
+        let side: CGFloat = 18
+        let img = NSImage(size: NSSize(width: side, height: side))
+        img.lockFocus()
+        NSGraphicsContext.current?.imageInterpolation = .high
+
+        let red = NSColor.systemRed
+        let grey = NSColor.secondaryLabelColor
+        let c = NSPoint(x: side/2, y: side/2)
+        let hw: CGFloat = 7.5   // half-width of eye
+        let lw: CGFloat = 1.6
+
+        func stroke(_ p: NSBezierPath, _ color: NSColor) {
+            color.setStroke(); p.lineWidth = lw; p.lineJoinStyle = .round; p.lineCapStyle = .round; p.stroke()
+        }
+
+        switch state {
+        case .displayOn:
+            // open eye: two symmetric arcs + iris
+            let e = NSBezierPath()
+            e.move(to: NSPoint(x: c.x-hw, y: c.y))
+            e.curve(to: NSPoint(x: c.x+hw, y: c.y), controlPoint1: NSPoint(x: c.x-2, y: c.y+6), controlPoint2: NSPoint(x: c.x+2, y: c.y+6))
+            e.curve(to: NSPoint(x: c.x-hw, y: c.y), controlPoint1: NSPoint(x: c.x+2, y: c.y-6), controlPoint2: NSPoint(x: c.x-2, y: c.y-6))
+            stroke(e, red)
+            let iris = NSBezierPath(ovalIn: NSRect(x: c.x-2.6, y: c.y-2.6, width: 5.2, height: 5.2))
+            red.setFill(); iris.fill()
+
+        case .screenOffAwake:
+            // half-shut eye: flat upper lid + bottom arc, half iris peeking
+            let lid = NSBezierPath()
+            lid.move(to: NSPoint(x: c.x-hw, y: c.y+0.5)); lid.line(to: NSPoint(x: c.x+hw, y: c.y+0.5))
+            stroke(lid, red)
+            let bot = NSBezierPath()
+            bot.move(to: NSPoint(x: c.x-hw, y: c.y+0.5))
+            bot.curve(to: NSPoint(x: c.x+hw, y: c.y+0.5), controlPoint1: NSPoint(x: c.x-2, y: c.y-5), controlPoint2: NSPoint(x: c.x+2, y: c.y-5))
+            stroke(bot, red)
+            NSGraphicsContext.saveGraphicsState()
+            NSBezierPath(rect: NSRect(x: c.x-hw, y: c.y-5, width: hw*2, height: 5.4)).addClip()
+            let iris = NSBezierPath(ovalIn: NSRect(x: c.x-2.4, y: c.y-3, width: 4.8, height: 4.8))
+            red.setFill(); iris.fill()
+            NSGraphicsContext.restoreGraphicsState()
+
+        case .normal:
+            // closed eye: gentle downward lid + small lashes
+            let lid = NSBezierPath()
+            lid.move(to: NSPoint(x: c.x-hw, y: c.y+0.5))
+            lid.curve(to: NSPoint(x: c.x+hw, y: c.y+0.5), controlPoint1: NSPoint(x: c.x-2, y: c.y-4), controlPoint2: NSPoint(x: c.x+2, y: c.y-4))
+            stroke(lid, grey)
+            for dx in [-5.0, -1.5, 2.0, 5.5] {
+                let l = NSBezierPath()
+                l.move(to: NSPoint(x: c.x+CGFloat(dx), y: c.y-2))
+                l.line(to: NSPoint(x: c.x+CGFloat(dx)-0.8, y: c.y-4.5))
+                l.lineWidth = 1.2; grey.setStroke(); l.lineCapStyle = .round; l.stroke()
+            }
+        }
+
+        img.unlockFocus()
+        img.isTemplate = false
+        return img
     }
 
     @objc private func quit() {

@@ -23,19 +23,13 @@ Your Mac sleeps mid-task, and things break:
 - 🎬 **Screen shares & recordings** freeze.
 - ⏳ **A 2-hour render** you're babysitting — asleep at minute 11.
 
-## Two modes
-
-Right-click the menu-bar eye and pick one:
+## Options
 
 | Icon | Mode | What it does |
-|------|------|--------------|
-| ⚪ grey | **Off** | Normal — your Mac sleeps as usual |
-| 🔴 red | **Keep display on** | Screen stays awake |
-| 🟠 amber | **Display off, stay awake** | Screen turns off, but your work keeps running |
-
-The icon always reflects the **real** state — if anything else is keeping your Mac awake, it shows that too.
-
-No admin password. No background daemon. Uses Apple's built-in `caffeinate`.
+|:----:|------|--------------|
+| <img src="assets/ic-off.png" width="28"/> | **Off** | Normal — your Mac sleeps as usual |
+| <img src="assets/ic-on.png" width="28"/> | **Keep display on** | Screen stays awake |
+| <img src="assets/ic-awake.png" width="28"/> | **Display off, stay awake** | Screen turns off, but your work keeps running |
 
 ## Install
 
