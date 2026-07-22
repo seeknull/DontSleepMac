@@ -1,90 +1,226 @@
 import Cocoa
 
-// DontSleepMac — menu-bar toggle to prevent display sleep.
-// Grey icon = normal (Mac sleeps per settings). Red icon = staying awake.
-// Uses `caffeinate -d` (display assertion) — no admin password required.
-// Left-click: toggle.  Right-click: menu (Quit).
+// DontSleepMac — menu-bar control for macOS sleep.
+//
+// Two modes, set from the right-click menu:
+//   • Keep display on        → caffeinate -d  (screen stays awake)
+//   • Display off, stay awake → caffeinate -i  (screen may sleep, machine keeps working)
+//
+// The icon reflects the REAL system state, polled every 5s. If any other app
+// (an external `caffeinate`, Amphetamine, etc.) is keeping the Mac awake, the
+// icon shows it too — one glance tells you the truth, whoever caused it.
+//
+//   grey  eye-slash → nothing preventing sleep (normal)
+//   red   eye       → display staying on
+//   amber moon      → display off / free to sleep, but machine stays awake
+//
+// caffeinate is launched with `-w <our pid>` so it can never outlive this app.
+
+enum AwakeState { case normal, displayOn, screenOffAwake }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
-    private var task: Process?
-    private var menu: NSMenu!
+    private var task: Process?          // our own caffeinate, if we started one
+    private var ourMode: AwakeState = .normal
+    private var timer: Timer?
 
-    private var isAwake: Bool { task != nil }
+    private let displayItem = NSMenuItem(title: "Keep display on", action: #selector(toggleDisplayOn), keyEquivalent: "")
+    private let screenOffItem = NSMenuItem(title: "Display off, stay awake", action: #selector(toggleScreenOff), keyEquivalent: "")
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
-        menu = NSMenu()
-        menu.addItem(NSMenuItem(title: "Quit DontSleepMac", action: #selector(quit), keyEquivalent: "q"))
+        let menu = NSMenu()
+        displayItem.target = self
+        screenOffItem.target = self
+        menu.addItem(displayItem)
+        menu.addItem(screenOffItem)
+        menu.addItem(.separator())
+        let quit = NSMenuItem(title: "Quit DontSleepMac", action: #selector(quit), keyEquivalent: "q")
+        quit.target = self
+        menu.addItem(quit)
+        statusItem.menu = menu
 
-        if let button = statusItem.button {
-            button.action = #selector(handleClick)
-            button.target = self
-            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
-        }
-        updateIcon()
-    }
-
-    @objc private func handleClick() {
-        if NSApp.currentEvent?.type == .rightMouseUp {
-            statusItem.menu = menu
-            statusItem.button?.performClick(nil)
-            statusItem.menu = nil
-        } else {
-            isAwake ? stopAwake() : startAwake()
-            updateIcon()
+        refresh()
+        // Poll real system state every 5s so external tools are reflected.
+        timer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
+            self?.refresh()
         }
     }
 
-    private func startAwake() {
+    // MARK: - Menu actions (mutually exclusive; clicking the active one turns it off)
+
+    @objc private func toggleDisplayOn() {
+        let wasOn = (ourMode == .displayOn)
+        wasOn ? stopOurCaffeinate() : startOurCaffeinate(flag: "-d", mode: .displayOn)
+        refresh()
+        if wasOn { warnIfStillHeld() }
+    }
+
+    @objc private func toggleScreenOff() {
+        let wasOn = (ourMode == .screenOffAwake)
+        wasOn ? stopOurCaffeinate() : startOurCaffeinate(flag: "-i", mode: .screenOffAwake)
+        refresh()
+        if wasOn { warnIfStillHeld() }
+    }
+
+    /// After we release our own hold, if the Mac is STILL being kept awake by
+    /// something else, tell the user who — so a "nothing happened" icon makes sense.
+    private func warnIfStillHeld() {
+        let holders = externalHolders()
+        guard systemState() != .normal, !holders.isEmpty else { return }
+        let list = holders.map { "• \($0)" }.joined(separator: "\n")
+        let alert = NSAlert()
+        alert.messageText = "Turned off, but your Mac is still awake"
+        alert.informativeText = "These are still preventing sleep:\n\n\(list)"
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+    }
+
+    private func startOurCaffeinate(flag: String, mode: AwakeState) {
+        stopOurCaffeinate()  // only one of our own at a time
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/usr/bin/caffeinate")
-        // -d = prevent DISPLAY sleep.
-        // -w <pid> = auto-exit when THIS app exits, so a crash/force-quit can
-        // never leave an orphaned caffeinate holding the display awake forever.
-        p.arguments = ["-d", "-w", String(ProcessInfo.processInfo.processIdentifier)]
+        // -w <pid>: auto-exit when this app exits, so we never orphan.
+        p.arguments = [flag, "-w", String(ProcessInfo.processInfo.processIdentifier)]
         p.terminationHandler = { [weak self] _ in
             DispatchQueue.main.async {
-                self?.task = nil
-                self?.updateIcon()
+                if self?.task != nil { self?.task = nil; self?.ourMode = .normal; self?.refresh() }
             }
         }
         do {
             try p.run()
             task = p
+            ourMode = mode
         } catch {
-            // Couldn't launch caffeinate — stay honest, don't show red.
             task = nil
+            ourMode = .normal
             NSSound.beep()
         }
     }
 
-    private func stopAwake() {
+    private func stopOurCaffeinate() {
         task?.terminate()
         task = nil
+        ourMode = .normal
     }
 
-    private func updateIcon() {
+    // MARK: - Reality: read the actual system sleep assertions
+
+    /// Returns the true current state by inspecting pmset assertions, so external
+    /// caffeinate / Amphetamine / etc. are reflected — not just our own toggles.
+    private func systemState() -> AwakeState {
+        guard let out = runPmsetAssertions() else { return ourMode }
+
+        // Overall assertion levels (last summary value wins).
+        let displayPrevented = assertionLevel(in: out, key: "PreventUserIdleDisplaySleep") == 1
+
+        // For "machine awake" we must ignore the incidental powerd assertion that
+        // exists only because the display is currently on. Count a real keep-awake
+        // source only if a non-powerd process owns a system/display sleep assertion.
+        let systemHeldByRealSource = out
+            .split(separator: "\n")
+            .contains { line in
+                line.contains("pid ") &&
+                (line.contains("PreventUserIdleSystemSleep") || line.contains("PreventSystemSleep")) &&
+                !line.contains("powerd") && !line.contains("coreaudiod")
+            }
+
+        if displayPrevented { return .displayOn }
+        if systemHeldByRealSource { return .screenOffAwake }
+        return .normal
+    }
+
+    /// Human-readable names of external processes currently preventing sleep
+    /// (excludes our own caffeinate and the incidental powerd/coreaudiod holders).
+    private func externalHolders() -> [String] {
+        guard let out = runPmsetAssertions() else { return [] }
+        let ourPid = task?.processIdentifier
+        var names: [String] = []
+        for line in out.split(separator: "\n") {
+            guard line.contains("pid "),
+                  line.contains("PreventUserIdleDisplaySleep")
+                    || line.contains("PreventUserIdleSystemSleep")
+                    || line.contains("PreventSystemSleep") else { continue }
+            if line.contains("powerd") || line.contains("coreaudiod") { continue }
+            // Extract "pid 1234(procname)"
+            guard let r = line.range(of: #"pid (\d+)\(([^)]+)\)"#, options: .regularExpression) else { continue }
+            let frag = String(line[r])
+            let pidStr = frag.drop(while: { !$0.isNumber }).prefix(while: { $0.isNumber })
+            if let ourPid, Int(pidStr) == Int(ourPid) { continue }  // skip our own
+            if let np = frag.firstIndex(of: "("), let ep = frag.firstIndex(of: ")") {
+                let name = String(frag[frag.index(after: np)..<ep])
+                if !names.contains(name) { names.append(name) }
+            }
+        }
+        return names
+    }
+
+    private func runPmsetAssertions() -> String? {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/pmset")
+        p.arguments = ["-g", "assertions"]
+        let pipe = Pipe()
+        p.standardOutput = pipe
+        do { try p.run() } catch { return nil }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        p.waitUntilExit()
+        return String(data: data, encoding: .utf8)
+    }
+
+    /// Parse the top summary block value, e.g. "   PreventUserIdleDisplaySleep    1".
+    private func assertionLevel(in text: String, key: String) -> Int {
+        for line in text.split(separator: "\n") {
+            let t = line.trimmingCharacters(in: .whitespaces)
+            if t.hasPrefix(key) {
+                return t.hasSuffix("1") ? 1 : 0
+            }
+        }
+        return 0
+    }
+
+    // MARK: - Render
+
+    private func refresh() {
+        let state = systemState()
+        updateIcon(for: state)
+        // Keep our menu checkmarks honest with what's actually happening.
+        displayItem.state = (state == .displayOn) ? .on : .off
+        screenOffItem.state = (state == .screenOffAwake) ? .on : .off
+    }
+
+    private func updateIcon(for state: AwakeState) {
         guard let button = statusItem.button else { return }
-        let name = isAwake ? "eye.fill" : "eye.slash"
-        let img = NSImage(systemSymbolName: name, accessibilityDescription: "DontSleep")
-        let color: NSColor = isAwake ? .systemRed : .secondaryLabelColor
+        let symbol: String
+        let color: NSColor
+        let tip: String
+        switch state {
+        case .normal:
+            symbol = "eye.slash"; color = .secondaryLabelColor
+            tip = "Normal — Mac sleeps per your settings"
+        case .displayOn:
+            symbol = "eye.fill"; color = .systemRed
+            tip = "Display staying on"
+        case .screenOffAwake:
+            symbol = "moon.zzz.fill"; color = .systemOrange
+            tip = "Display off — machine staying awake"
+        }
+        let img = NSImage(systemSymbolName: symbol, accessibilityDescription: "DontSleepMac")
         let config = NSImage.SymbolConfiguration(paletteColors: [color])
         button.image = img?.withSymbolConfiguration(config)
         button.image?.isTemplate = false
-        button.toolTip = isAwake ? "Awake — display won't sleep (click to stop)"
-                                 : "Normal — sleeps per settings (click to keep awake)"
+        button.toolTip = tip
     }
 
     @objc private func quit() {
-        stopAwake()
+        stopOurCaffeinate()
         NSApp.terminate(nil)
     }
 }
 
 let app = NSApplication.shared
-app.setActivationPolicy(.accessory) // no Dock icon
+app.setActivationPolicy(.accessory)
 let delegate = AppDelegate()
 app.delegate = delegate
 app.run()

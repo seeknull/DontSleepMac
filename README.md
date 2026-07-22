@@ -4,9 +4,7 @@
 
 # DontSleepMac
 
-**A one-click menu-bar toggle to stop your Mac's display from sleeping.**
-
-Red eye = staying awake. Grey eye = normal. That's the whole app.
+**A one-click menu-bar toggle to keep your Mac awake.**
 
 <img src="assets/hero.png" width="720" alt="DontSleepMac in the menu bar" />
 
@@ -16,32 +14,28 @@ Red eye = staying awake. Grey eye = normal. That's the whole app.
 
 ## Why
 
-Your Mac dims and sleeps mid-task, and things break:
+Your Mac sleeps mid-task, and things break:
 
-- 🤖 **Long-running coding agents** drop their network connection when the display sleeps.
-- 🖥️ **Local servers & builds** get throttled or paused the moment you step away.
-- 📥 **Big downloads / uploads** stall on the lock screen.
-- 📊 **Dashboards & monitors** on a wall screen go dark.
-- 🎬 **Screen shares & recordings** freeze because Wi-Fi naps with the display.
-- ⏳ **A 2-hour render** you're babysitting — gone to sleep at minute 11.
+- 🤖 **Coding agents** drop their connection when the display sleeps.
+- 🖥️ **Local servers & builds** pause the moment you step away.
+- 📥 **Long downloads / uploads** stall on the lock screen.
+- 📊 **Dashboards** on a wall screen go dark.
+- 🎬 **Screen shares & recordings** freeze.
+- ⏳ **A 2-hour render** you're babysitting — asleep at minute 11.
 
-You *could* dig into System Settings and flip sleep to "Never"... then forget, and drain your battery for days. This is one click, and you can *see* the state.
+## Two modes
 
-## How it works
+Right-click the menu-bar eye and pick one:
 
-One red eye in your menu bar. Click it:
+| Icon | Mode | What it does |
+|------|------|--------------|
+| ⚪ grey | **Off** | Normal — your Mac sleeps as usual |
+| 🔴 red | **Keep display on** | Screen stays awake |
+| 🟠 amber | **Display off, stay awake** | Screen turns off, but your work keeps running |
 
-| State | Icon | Meaning |
-|-------|------|---------|
-| **Off** | <img src="assets/state-off.png" height="20"/> grey eye-slash | Normal — your Mac sleeps per your settings |
-| **On**  | <img src="assets/state-on.png" height="20"/> red eye | Display stays awake |
+The icon always reflects the **real** state — if anything else is keeping your Mac awake, it shows that too.
 
-- **Left-click** — toggle awake / normal
-- **Right-click** — Quit
-
-Under the hood it uses Apple's built-in `caffeinate -d` (`man caffeinate`). **No admin password. No background daemon.** When the eye is grey, nothing runs — your original sleep settings apply, untouched.
-
-> It **overrides** display sleep while active; it does **not** rewrite your System Settings dropdowns. The menu-bar eye is your source of truth: red = awake, grey = normal.
+No admin password. No background daemon. Uses Apple's built-in `caffeinate`.
 
 ## Install
 
@@ -50,41 +44,20 @@ Under the hood it uses Apple's built-in `caffeinate -d` (`man caffeinate`). **No
 ```bash
 git clone https://github.com/seeknull/DontSleepMac.git
 cd DontSleepMac
-./build.sh
-open DontSleepMac.app
+./install.sh
 ```
 
-Move it to Applications to keep it around:
+That builds it and puts it in **/Applications**. Launch it any time:
 
-```bash
-cp -R DontSleepMac.app /Applications/
-```
+> **Cmd + Space → "Don't Sleep"**
 
-### Start at login (optional)
+## Data & privacy
 
-```bash
-osascript -e 'tell application "System Events" to make login item at end with properties {path:"/Applications/DontSleepMac.app", hidden:true}'
-```
-
-To remove it later: **System Settings → General → Login Items**, or
-
-```bash
-osascript -e 'tell application "System Events" to delete login item "DontSleepMac"'
-```
-
-## Verify it's actually working
-
-With the eye **red**, run:
-
-```bash
-pmset -g assertions | grep PreventUserIdleDisplaySleep
-```
-
-You'll see `PreventUserIdleDisplaySleep 1` held by `caffeinate`. Toggle it grey and it drops back to `0`.
+**Zero data is collected. No network calls are made.** The app only runs Apple's built-in `caffeinate` and reads local power state via `pmset`. Nothing leaves your Mac. [Read the source](main.swift) — it's one small file.
 
 ## Uninstall
 
-Quit the app (right-click → Quit), remove the login item (above), then delete `DontSleepMac.app`. Nothing else is left behind.
+Quit it (right-click → Quit), then delete `/Applications/DontSleepMac.app`. Nothing else is left behind.
 
 ## License
 
