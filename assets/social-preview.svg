@@ -11,7 +11,7 @@
   <rect width="1280" height="640" fill="url(#page)"/>
 
   <!-- laptop, scaled to fit 1280x640; original art is ~1200 wide x 720 tall centered at 800,510 -->
-  <g transform="translate(144,3) scale(0.62)">
+  <g transform="translate(-16,-99) scale(0.82)">
     <g filter="url(#sh)">
       <rect x="300" y="150" width="1000" height="640" rx="26" fill="#0b0d12" stroke="#2b2f38" stroke-width="3"/>
       <circle cx="800" cy="172" r="4" fill="#22262e"/>
