@@ -65,8 +65,24 @@
     </g>
 
     <!-- centered subtitle on wallpaper -->
-    <text x="800" y="560" font-family="-apple-system,Helvetica,Arial" font-size="46" font-weight="800" fill="#eef2f7" text-anchor="middle">Your Mac stays awake</text>
-    <text x="800" y="606" font-family="-apple-system,Helvetica,Arial" font-size="24" font-weight="500" fill="#8b97a8" text-anchor="middle">One click in the menu bar. Red = on.</text>
+    <text x="800" y="540" font-family="-apple-system,Helvetica,Arial" font-size="46" font-weight="800" fill="#eef2f7" text-anchor="middle">Your Mac stays awake</text>
+
+    <!-- two option lines, each with its icon -->
+    <!-- line 1: open red eye + Stay Awake — Display On -->
+    <g transform="translate(618,585)">
+      <path d="M-11 0 Q0 -8 11 0 Q0 8 -11 0 Z" fill="none" stroke="#ef4b3c" stroke-width="2.4" stroke-linejoin="round"/>
+      <circle cx="0" cy="0" r="4.6" fill="url(#iris)"/>
+    </g>
+    <text x="640" y="591" font-family="-apple-system,Helvetica,Arial" font-size="22" font-weight="500" fill="#c3ccd8">Stay Awake — Display On</text>
+
+    <!-- line 2: half-shut red eye + Stay Awake — Display Off -->
+    <g transform="translate(618,623)">
+      <line x1="-11" y1="0" x2="11" y2="0" stroke="#ef4b3c" stroke-width="2.4" stroke-linecap="round"/>
+      <path d="M-11 0 Q0 7 11 0" fill="none" stroke="#ef4b3c" stroke-width="2.4" stroke-linejoin="round"/>
+      <clipPath id="heroLid"><rect x="-11" y="0" width="22" height="8"/></clipPath>
+      <circle cx="0" cy="1.5" r="3.8" fill="url(#iris)" clip-path="url(#heroLid)"/>
+    </g>
+    <text x="640" y="629" font-family="-apple-system,Helvetica,Arial" font-size="22" font-weight="500" fill="#c3ccd8">Stay Awake — Display Off</text>
 
     <!-- hinge / base -->
     <rect x="300" y="786" width="1000" height="10" rx="4" fill="#2b2f38"/>
