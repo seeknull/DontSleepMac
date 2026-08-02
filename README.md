@@ -45,6 +45,23 @@ That builds it and puts it in **/Applications**. Launch it any time:
 
 > **Cmd + Space → "Don't Sleep"**
 
+## Clicked "off" and nothing happened?
+
+The icon tracks the **real** system state, so it stays red whenever *anything* prevents sleep — Chrome playing a video, a `caffeinate` left behind by a script, another app. Clicking the active mode always releases DontSleepMac's own hold; if your Mac is still awake afterwards, a dialog names who is holding it, resolving helper processes to the culprit you'd actually quit:
+
+```
+Still preventing sleep:
+
+• Google Chrome (pid 6103) — Video Wake Lock
+• node (pid 743) — via caffeinate
+```
+
+Same list any time from the menu (**Show what's keeping Mac awake…**), or from a terminal:
+
+```bash
+/Applications/DontSleepMac.app/Contents/MacOS/DontSleepMac --diagnose
+```
+
 ## Data & privacy
 
 **Zero data is collected. No network calls are made.** The app only runs Apple's built-in `caffeinate` and reads local power state via `pmset`. Nothing leaves your Mac. [Read the source](main.swift) — it's one small file.

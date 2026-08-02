@@ -62,6 +62,20 @@ echo "[4] 'Who is holding it' — external holder is nameable"
 caffeinate -d & D=$!; sleep 2
 HOLDERS="$(held_by_real | paste -sd, -)"
 if echo "$HOLDERS" | grep -q caffeinate; then ok "holder name reported: $HOLDERS"; else bad "no holder name (got: '$HOLDERS')"; fi
+# The app must name the holder too — a silent "nothing happens" toggle is the bug
+# this guards against. --diagnose runs the same parsing the menu uses.
+APP=DontSleepMac.app/Contents/MacOS/DontSleepMac
+if [ -x "$APP" ]; then
+  DIAG="$("$APP" --diagnose)"
+  echo "$DIAG" | grep -q "^State: displayOn" \
+    && ok "app reports displayOn" || bad "app state wrong: $(echo "$DIAG" | head -1)"
+  # ...and resolves it to a real process, not a bare "caffeinate"
+  echo "$DIAG" | grep -qE "caffeinate \(pid [0-9]+\) — started by|via caffeinate" \
+    && ok "app names the process behind the hold" \
+    || bad "app did not name the holding process"
+else
+  echo "  SKIP  app not built (run ./build.sh) — skipping --diagnose checks"
+fi
 kill $D 2>/dev/null; wait $D 2>/dev/null; sleep 1
 
 echo ""
