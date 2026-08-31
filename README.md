@@ -56,3 +56,7 @@ Quit it (right-click → Quit), then delete `/Applications/DontSleepMac.app`. No
 ## License
 
 [MIT](LICENSE) © seeknull
+
+---
+
+Part of [seek:null](https://seeknull.com) — things built to scratch an itch.
