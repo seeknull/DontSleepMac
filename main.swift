@@ -12,9 +12,9 @@ import Cocoa
 // caused it. Clicking a mode that is already ON always means "turn it off": if
 // the hold isn't ours, we say who owns it instead of silently doing nothing.
 //
-//   grey  eye-slash → nothing preventing sleep (normal)
-//   red   eye       → display staying on
-//   amber moon      → display off / free to sleep, but machine stays awake
+//   grey slashed eye  → nothing preventing sleep (normal)
+//   red open eye      → display staying on
+//   red half-shut eye → display free to sleep, but machine stays awake
 //
 // caffeinate is launched with `-w <our pid>` so it can never outlive this app.
 

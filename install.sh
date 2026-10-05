@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build DontSleepMac and install it to /Applications.
-# After this, launch it any time with  Cmd+Space → "Don't Sleep".
+# After this, launch it any time with  Cmd+Space → "DontSleepMac".
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -18,4 +18,4 @@ open /Applications/DontSleepMac.app
 
 echo ""
 echo "✅ Installed. It's running now — look for the eye in your menu bar."
-echo "   Launch any time:  Cmd+Space → \"Don't Sleep\""
+echo "   Launch any time:  Cmd+Space → \"DontSleepMac\""

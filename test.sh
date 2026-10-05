@@ -2,9 +2,9 @@
 # Automated integration tests for DontSleepMac.
 #
 # These validate the real system behavior the app relies on:
-#   1. caffeinate -d prevents DISPLAY sleep (red state)
-#   2. caffeinate -i keeps the system awake with display free (amber state)
-#   3. releasing an assertion returns to normal (grey state)
+#   1. caffeinate -d prevents DISPLAY sleep (open red eye)
+#   2. caffeinate -i keeps the system awake with display free (half-shut red eye)
+#   3. releasing an assertion returns to normal (grey slashed eye)
 #   4. external holders are detectable by process name (the "who's holding it" feature)
 #   5. a real workload keeps running past sleep thresholds (no stalls)
 #
@@ -42,7 +42,7 @@ echo "[1] Baseline: nothing should prevent DISPLAY sleep"
 check "display not prevented at rest" "$(disp)" "0"
 
 echo ""
-echo "[2] caffeinate -d  → DISPLAY-ON (red) state"
+echo "[2] caffeinate -d  → DISPLAY-ON (open red eye) state"
 caffeinate -d & D=$!; sleep 2
 check "display prevented"        "$(disp)" "1"
 if held_by_real | grep -q caffeinate; then ok "caffeinate detected as holder"; else bad "caffeinate not detected as holder"; fi
@@ -50,11 +50,11 @@ kill $D 2>/dev/null; wait $D 2>/dev/null; sleep 2
 check "display released after kill" "$(disp)" "0"
 
 echo ""
-echo "[3] caffeinate -i  → SCREEN-OFF-AWAKE (amber) state"
+echo "[3] caffeinate -i  → SCREEN-OFF-AWAKE (half-shut red eye) state"
 caffeinate -i & I=$!; sleep 2
 check "display NOT prevented (screen free)" "$(disp)" "0"
 check "system prevented"                    "$(sys)"  "1"
-if held_by_real | grep -q caffeinate; then ok "amber holder detected"; else bad "amber holder not detected"; fi
+if held_by_real | grep -q caffeinate; then ok "screen-off-awake holder detected"; else bad "screen-off-awake holder not detected"; fi
 kill $I 2>/dev/null; sleep 2
 
 echo ""
